@@ -22,7 +22,14 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BQ_PROJECT_ID = os.getenv("BQ_PROJECT_ID")
 BQ_DATASET = os.getenv("BQ_DATASET_KAMA")
 BQ_TABLE = os.getenv("BQ_TABLE")
-SERVICE_ACCOUNT_JSON = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+
+# === BigQuery Setup using Streamlit Secrets ===
+gcp_credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"]
+)
+
+BQ_PROJECT_ID = st.secrets["gcp_service_account"]["project_id"]
+
 
 # === Brand to Dataset Map ===
 BRAND_DATASETS = {
@@ -39,8 +46,9 @@ today_str = date.today().strftime('%Y-%m-%d')
 
 
 # === BigQuery Setup ===
+
 client = bigquery.Client(
-    credentials=service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_JSON),
+    credentials=gcp_credentials,
     project=BQ_PROJECT_ID
 )
 
