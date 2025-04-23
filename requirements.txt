@@ -44,7 +44,7 @@ google-resumable-media==2.7.2
 googleapis-common-protos==1.70.0
 griffe==1.7.2
 grpcio==1.72.0rc1
-grpcio-status==1.72.0rc1
+grpcio-status==1.71.0
 h11==0.14.0
 h5py==3.13.0
 httpcore==1.0.8
@@ -88,7 +88,7 @@ namex==0.0.8
 narwhals==1.35.0
 nest-asyncio==1.6.0
 numpy==2.0.2
-openai==1.75.0
+openai==1.76.0
 openai-agents==0.0.11
 opt_einsum==3.4.0
 optree==0.15.0
@@ -102,7 +102,7 @@ platformdirs==4.3.7
 prompt_toolkit==3.0.50
 propcache==0.3.1
 proto-plus==1.26.1
-protobuf==6.31.0rc1
+protobuf==5.29.4
 psutil==7.0.0
 ptyprocess==0.7.0
 pure_eval==0.2.3
