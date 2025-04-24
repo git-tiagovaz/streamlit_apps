@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from google.cloud import bigquery
 from google.oauth2 import service_account
-from openai import OpenAI
+import openai
 from dotenv import load_dotenv
 from datetime import date
 import smtplib
@@ -55,7 +55,7 @@ client = bigquery.Client(
 # (Everything above stays exactly the same...)
 
 # --- Summarize using OpenAI ---
-client_ai = OpenAI(api_key=OPENAI_API_KEY)
+openai.api_key = OPENAI_API_KEY
 
 # --- CLEAN GPT OUTPUT ---
 def clean_sql_output(raw_sql):
@@ -75,7 +75,7 @@ Here is the BigQuery data result:
 Please summarize the main findings and provide key insights in a clear and concise way. Only return your answer in plain English, no code or markdown.
 """
 
-    response = client_ai.chat.completions.create(
+    response = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5
@@ -109,7 +109,7 @@ Ensure correct use of GA4 schema fields like _TABLE_SUFFIX, event_date, event_na
 
 
     messages = history + [{"role": "user", "content": prompt}]
-    response = client_ai.chat.completions.create(
+    response = openai.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
         temperature=0
