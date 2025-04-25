@@ -17,8 +17,6 @@ warnings.filterwarnings("ignore", message="BigQuery Storage module not found")
 # === Load environment variables ===
 load_dotenv(dotenv_path="/Users/tiagovaz/my_projects/.venv/github/workflows/config.env")
 # -- CREDENTIALS LOAD -- #
-
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 BQ_PROJECT_ID = os.getenv("BQ_PROJECT_ID")
 BQ_DATASET = os.getenv("BQ_DATASET_KAMA")
 BQ_TABLE = os.getenv("BQ_TABLE")
@@ -57,13 +55,17 @@ client = bigquery.Client(
 # --- Summarize using OpenAI ---
 # openai.api_key = OPENAI_API_KEY
 
-if "OPENAI_API_KEY" not in st.secrets:
-    st.error("❌ OPENAI_API_KEY is missing in Streamlit secrets.")
+# ✅ Prefer Streamlit secrets; fallback to local .env
+if "OPENAI_API_KEY" in st.secrets:
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+else:
+    load_dotenv(dotenv_path="/Users/tiagovaz/my_projects/.venv/github/workflows/config.env")
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
+# Fail gracefully if not found
+if not OPENAI_API_KEY:
+    st.error("❌ OPENAI_API_KEY is not set in secrets or .env.")
     st.stop()
-
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
-
-OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 
 # --- CLEAN GPT OUTPUT ---
