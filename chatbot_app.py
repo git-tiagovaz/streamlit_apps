@@ -19,7 +19,7 @@ load_dotenv(dotenv_path="/Users/tiagovaz/my_projects/.venv/github/workflows/conf
 # -- CREDENTIALS LOAD -- #
 BQ_PROJECT_ID = os.getenv("BQ_PROJECT_ID")
 BQ_DATASET = os.getenv("BQ_DATASET_KAMA")
-BQ_TABLE = os.getenv("BQ_TABLE")
+BQ_TABLE = "events_*"
 
 # === BigQuery Setup using Streamlit Secrets ===
 gcp_credentials = service_account.Credentials.from_service_account_info(
