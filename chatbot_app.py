@@ -56,6 +56,13 @@ client = bigquery.Client(
 
 # --- Summarize using OpenAI ---
 # openai.api_key = OPENAI_API_KEY
+
+if "OPENAI_API_KEY" not in st.secrets:
+    st.error("❌ OPENAI_API_KEY is missing in Streamlit secrets.")
+    st.stop()
+
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 
 
