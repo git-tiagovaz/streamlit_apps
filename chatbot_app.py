@@ -55,7 +55,9 @@ client = bigquery.Client(
 # (Everything above stays exactly the same...)
 
 # --- Summarize using OpenAI ---
-openai.api_key = OPENAI_API_KEY
+# openai.api_key = OPENAI_API_KEY
+OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+
 
 # --- CLEAN GPT OUTPUT ---
 def clean_sql_output(raw_sql):
