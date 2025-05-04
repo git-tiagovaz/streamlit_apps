@@ -51,7 +51,7 @@ if "has_started_chat" not in st.session_state:
 # === Welcome Message ===
 if not st.session_state.has_started_chat:
     st.markdown("""
-    ### 🧭 Welcome to Your Ecommerce Data Assistant
+    ### 🗭 Welcome to Your Ecommerce Data Assistant
 
     💬 Just ask your question in plain English — no SQL needed!
 
@@ -65,13 +65,13 @@ if not st.session_state.has_started_chat:
     2. Query live GA4 BigQuery data  
     3. Show results with summaries and optional charts
 
-    👉 Select a brand from the sidebar to get started. Then type your question below — we’ll handle the rest.
+    👈 Select a brand from the sidebar to get started. Then type your question below — we’ll handle the rest.
     """)
     st.session_state.has_started_chat = True
     st.markdown("---")
 
 # === Brand Selection Sidebar ===
-st.sidebar.header("🛍️ Select Brand")
+st.sidebar.header("🏭 Select Brand")
 selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
 selected_dataset = BRAND_DATASETS[selected_brand]
 st.sidebar.success(f"Using dataset: `{selected_dataset}`")
@@ -96,15 +96,23 @@ def summarize_dataframe(df: pd.DataFrame, user_question: str) -> str:
     sample_data = df.head(50).to_csv(index=False)
 
     prompt = f"""
-You are a data analyst assistant. A user asked: "{user_question}".
+You are a senior Google Analytics 4 (GA4) data analyst reviewing raw BigQuery data extracted from GA4 for ecommerce and website performance. Your task is to interpret the dataset below and provide a concise, insightful summary in plain English.
 
-Here is the BigQuery data result:
+A user asked the following question:
+\"\"\"{user_question}\"\"\"
 
+Below is a sample of the query result (first 50 rows):
 {sample_data}
 
-Please summarize the main findings and provide key insights in a clear and concise way. Only return your answer in plain English, no code or markdown.
-"""
+Based on the data above, perform the following:
+- Identify key patterns, trends, or anomalies relevant to the user question.
+- Mention top metrics (e.g., revenue, purchases, sessions, users) only if present.
+- Reference temporal changes (e.g., growth, decline, stability) if dates are part of the data.
+- Use non-technical language where possible, as if explaining to a digital marketing manager.
+- Focus on business impact: what the data means and what could be actionable.
 
+Do **not** return code, markdown, or SQL — only write a plain English paragraph with clear, practical insights.
+"""
     response = openai.chat.completions.create(
         model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
@@ -117,19 +125,15 @@ def load_prompt(template_path, **kwargs):
         template = f.read()
     return template.format(**kwargs)
 
-
 def generate_sql_from_question_with_memory(history, latest_question, selected_dataset):
     today_str = date.today().strftime('%Y-%m-%d')
-
-    prompt = prompt = load_prompt(
-    "prompts/ga4_sql_prompt.txt",
-    BQ_PROJECT_ID=BQ_PROJECT_ID,
-    selected_dataset=selected_dataset,
-    BQ_TABLE=BQ_TABLE,
-    today_str=today_str,
-    latest_question=latest_question
-)
-
+    prompt = load_prompt(
+        "ga4_sql_prompt.txt",
+        BQ_PROJECT_ID=BQ_PROJECT_ID,
+        selected_dataset=selected_dataset,
+        today_str=today_str,
+        latest_question=latest_question
+    )
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
