@@ -128,12 +128,14 @@ def load_prompt(template_path, **kwargs):
 def generate_sql_from_question_with_memory(history, latest_question, selected_dataset):
     today_str = date.today().strftime('%Y-%m-%d')
     prompt = load_prompt(
-        "ga4_sql_prompt.txt",
-        BQ_PROJECT_ID=BQ_PROJECT_ID,
-        selected_dataset=selected_dataset,
-        today_str=today_str,
-        latest_question=latest_question
+    "ga4_sql_prompt.txt",
+    BQ_PROJECT_ID=BQ_PROJECT_ID,
+    selected_dataset=selected_dataset,
+    BQ_TABLE=BQ_TABLE,
+    today_str=today_str,
+    latest_question=latest_question
     )
+
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
