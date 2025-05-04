@@ -106,34 +106,29 @@ Please summarize the main findings and provide key insights in a clear and conci
 """
 
     response = openai.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=[{"role": "user", "content": prompt}],
         temperature=0.5
     )
     return response.choices[0].message.content.strip()
 
+def load_prompt(template_path, **kwargs):
+    with open(template_path, "r") as f:
+        template = f.read()
+    return template.format(**kwargs)
+
+
 def generate_sql_from_question_with_memory(history, latest_question, selected_dataset):
     today_str = date.today().strftime('%Y-%m-%d')
 
-    prompt = f"""
-Act like a Senior GA4 data analyst with extensive knowledge on querying GA4 raw data and analysing GA4 data results with great insights and recommendations, taking in consideration seasonality, trends, campaign and traffic performance, checkout funnel analysis, etc. Your job is to write SQL queries using the GA4 BigQuery dataset.\
-Use the latest queries and best practices to answer the questions from the users, without exceeding the limits of BigQuery.\
-The GA4 BigQuery export table is called `{BQ_PROJECT_ID}.{selected_dataset}.{BQ_TABLE}` and includes ecommerce events like 'purchase', 'session_start', etc.
-
-Today’s date is {today_str}. When the user mentions relative dates like "last 7 days", "yesterday", "this month", "last year", etc., \
-or asks to compare two time periods, calculate the appropriate date ranges accordingly to {today_str} and return a comparison breakdown (e.g. current vs previous).
-
-Use the `PARSE_DATE('%Y%m%d', event_date) AS event_date` inside the SELECT clause and NOT on the WHERE clause. This of course is only needed when the users asks questions about relative dates. \
-Use the _TABLE_SUFFIX BETWEEN 'YYYYMMDD' AND 'YYYYMMDD'` in the WHERE clause whenever you're using relative dates. \
-For brands datasets selected as Rabanne and JPG, please remember to ALWAYS exclude the hostname that contains fashion. You can use the device.web_info.hostname where the word fashion appears. We don't want to include this hostname in our analysis.
-For questions on products or items please always make reference to the items RECORD in GA4 bigquery schema contains information about items included in an event. Don't forget to use the unnest to grab the item name or revenue. It is repeated for each item.
-For questions on revenue, use `ecommerce.purchase_revenue`.
-
-Here is a sample question: "{latest_question}"
-
-Generate a valid BigQuery Standard SQL query to answer the question.
-Do not include any explanation, comments, or SQL code block formatting. In case the user asks for something outside of your scope, answer that you are not able to help with that.
-"""
+    prompt = prompt = load_prompt(
+    "prompts/ga4_sql_prompt.txt",
+    BQ_PROJECT_ID=BQ_PROJECT_ID,
+    selected_dataset=selected_dataset,
+    BQ_TABLE=BQ_TABLE,
+    today_str=today_str,
+    latest_question=latest_question
+)
 
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
