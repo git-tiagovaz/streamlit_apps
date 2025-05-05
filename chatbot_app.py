@@ -7,8 +7,17 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 import openai
 import warnings
+from dotenv import load_dotenv
+
+# === Agent imports ===
+from agents.sql_generator import generate_sql
+from agents.quota_checker import exceeds_quota
+from agents.result_validator import validate_query_safety, run_query_and_check_empty
+from agents.chart_recommender import recommend_chart_type
+from agents.insight_expander import suggest_additional_insights
 
 warnings.filterwarnings("ignore", message="BigQuery Storage module not found")
+load_dotenv()
 
 # === Load credentials from Streamlit secrets ===
 gcp_credentials = service_account.Credentials.from_service_account_info(
@@ -40,7 +49,7 @@ BRAND_DATASETS = {
 
 # === Streamlit Setup ===
 st.set_page_config(page_title="Ecommerce Data Assistant", layout="wide")
-st.title("🧠 Ecommerce Data Assistant with Memory")
+st.title("🧠 Ecommerce Data Assistant with Multi-Agent System")
 
 # === Session State ===
 if "messages" not in st.session_state:
@@ -51,21 +60,11 @@ if "has_started_chat" not in st.session_state:
 # === Welcome Message ===
 if not st.session_state.has_started_chat:
     st.markdown("""
-    ### 🗭 Welcome to Your Ecommerce Data Assistant
+    ### 🧭 Welcome to Your Multi-Agent GA4 Ecommerce Assistant
 
-    💬 Just ask your question in plain English — no SQL needed!
+    Ask anything about purchases, conversion funnels, revenue trends, or user behavior.
 
-    You can ask things like:
-    - “How many purchases did we have last week?”
-    - “Compare this month’s revenue to the last one”
-    - “Show top 5 countries by users in the last 30 days”
-
-    📊 Your assistant will:
-    1. Understand your question  
-    2. Query live GA4 BigQuery data  
-    3. Show results with summaries and optional charts
-
-    👈 Select a brand from the sidebar to get started. Then type your question below — we’ll handle the rest.
+    👈 Select a brand from the sidebar and begin!
     """)
     st.session_state.has_started_chat = True
     st.markdown("---")
@@ -87,31 +86,27 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
-# === GPT Helpers ===
+# === Utility: Load SQL Prompt Template ===
+def load_prompt(template_path, **kwargs):
+    with open(template_path, "r") as f:
+        template = f.read()
+    return template.format(**kwargs)
 
-def clean_sql_output(raw_sql):
-    return re.sub(r"```sql|```", "", raw_sql).strip()
+# === BigQuery Runner ===
+def run_query(sql):
+    query_job = client.query(sql)
+    return query_job.result().to_dataframe()
 
+# === Insight Summary ===
 def summarize_dataframe(df: pd.DataFrame, user_question: str) -> str:
     sample_data = df.head(50).to_csv(index=False)
-
     prompt = f"""
-You are a senior Google Analytics 4 (GA4) data analyst reviewing raw BigQuery data extracted from GA4 for ecommerce and website performance. Your task is to interpret the dataset below and provide a concise, insightful summary in plain English.
+You are a senior GA4 data analyst. A user asked: \"{user_question}\"
 
-A user asked the following question:
-\"\"\"{user_question}\"\"\"
-
-Below is a sample of the query result (first 50 rows):
+Below is a preview of the query result:
 {sample_data}
 
-Based on the data above, perform the following:
-- Identify key patterns, trends, or anomalies relevant to the user question.
-- Mention top metrics (e.g., revenue, purchases, sessions, users) only if present.
-- Reference temporal changes (e.g., growth, decline, stability) if dates are part of the data.
-- Use non-technical language where possible, as if explaining to a digital marketing manager.
-- Focus on business impact: what the data means and what could be actionable.
-
-Do **not** return code, markdown, or SQL — only write a plain English paragraph with clear, practical insights.
+Summarize the findings using plain English. Mention any patterns, drops, spikes, or trends. Keep it actionable and readable by non-technical stakeholders.
 """
     response = openai.chat.completions.create(
         model="gpt-4o",
@@ -119,35 +114,6 @@ Do **not** return code, markdown, or SQL — only write a plain English paragrap
         temperature=0.5
     )
     return response.choices[0].message.content.strip()
-
-def load_prompt(template_path, **kwargs):
-    with open(template_path, "r") as f:
-        template = f.read()
-    return template.format(**kwargs)
-
-def generate_sql_from_question_with_memory(history, latest_question, selected_dataset):
-    today_str = date.today().strftime('%Y-%m-%d')
-    prompt = load_prompt(
-    "ga4_sql_prompt.txt",
-    BQ_PROJECT_ID=BQ_PROJECT_ID,
-    selected_dataset=selected_dataset,
-    BQ_TABLE=BQ_TABLE,
-    today_str=today_str,
-    latest_question=latest_question
-    )
-
-    messages = history + [{"role": "user", "content": prompt}]
-    response = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=messages,
-        temperature=0
-    )
-    return clean_sql_output(response.choices[0].message.content)
-
-# === BigQuery Runner ===
-def run_query(sql):
-    query_job = client.query(sql)
-    return query_job.result().to_dataframe()
 
 # === Chat Input Handler ===
 user_prompt = st.chat_input("Ask a question about your ecommerce data...")
@@ -159,30 +125,59 @@ if user_prompt:
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
-                raw_sql = generate_sql_from_question_with_memory(
-                    st.session_state.messages, user_prompt, selected_dataset
+                # === SQL Generation ===
+                today_str = date.today().strftime('%Y-%m-%d')
+                sql_prompt = load_prompt(
+                    "ga4_sql_prompt.txt",
+                    BQ_PROJECT_ID=BQ_PROJECT_ID,
+                    selected_dataset=selected_dataset,
+                    BQ_TABLE=BQ_TABLE,
+                    today_str=today_str,
+                    latest_question=user_prompt
                 )
-                st.code(raw_sql, language="sql")
+                sql_query = generate_sql(sql_prompt)
+                st.code(sql_query, language="sql")
 
-                df = run_query(raw_sql)
+                # === Cost Check ===
+                if not exceeds_quota(sql_query, client):
+                    st.warning("⚠️ This query may exceed BigQuery quota limits (2GB scanned). Please refine your question.")
+                    
+                # === Run Query ===
+                df = run_query_and_check_empty(sql_query)
+                if df.empty(df):
+                    st.warning("⚠️ Query returned no results.")
+
                 st.success("✅ Query ran successfully!")
                 st.dataframe(df)
 
+                # === Insight Summary ===
                 with st.spinner("🧠 Generating insights..."):
                     summary = summarize_dataframe(df, user_prompt)
                     st.markdown("### 📊 Insight Summary")
                     st.info(summary)
 
+                # === Chart Recommendation ===
+                recommended_chart = recommend_chart_type(df, user_prompt)
+                if recommended_chart:
+                    st.markdown(f"### 📈 Recommended Chart: `{recommended_chart}`")
+                    if recommended_chart == "line":
+                        st.line_chart(df.select_dtypes(include='number'))
+                    elif recommended_chart == "bar":
+                        st.bar_chart(df.select_dtypes(include='number'))
+
+                # === Insight Suggestions ===
+                suggestions = suggest_additional_insights(user_prompt, df.head(20).to_csv(index=False))
+                st.markdown("### 🔍 You might also ask:")
+                st.markdown(suggestions)
+
+                # === Save history ===
                 st.session_state.messages.append({
                     "role": "assistant",
-                    "content": f"Here is the result of your query:\n```sql\n{raw_sql}\n```\n\n**Insight Summary:**\n{summary}"
+                    "content": f"Here is the result of your query:\n```sql\n{sql_query}\n```\n\n**Insight Summary:**\n{summary}\n\n**Suggestions:**\n{suggestions}"
                 })
 
-                if st.checkbox("📊 Show chart (if numeric/time-based)?"):
-                    st.line_chart(df.select_dtypes(include='number'))
-
             except Exception as e:
-                st.error(f"❌ Error executing query: {e}")
+                st.error(f"❌ Error: {e}")
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": f"❌ Error executing query: {e}"

@@ -38,7 +38,7 @@ Use appropriate GA4 fields:
 📌 4. Unnesting and record handling:
 
 - For product or ecommerce item analysis:
-  Use `UNNEST(items) AS item`, then reference `item.item_name`, `item.item_id`, `item.revenue`, etc.
+  Use `UNNEST(items) AS item`, then reference `item.item_name`, `item.item_id`, `item.revenue`, `item.quantity`, `item.price`, `item.category`, `item.variant`, etc.
 - For event/user parameters:
   Use `UNNEST(event_params)` or `UNNEST(user_properties)` where needed
 
