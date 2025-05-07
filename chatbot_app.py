@@ -71,7 +71,7 @@ if not st.session_state.has_started_chat:
     st.markdown("---")
 
 # === Brand Selection Sidebar ===
-st.sidebar.header("🏭 Select Brand")
+st.sidebar.markdown("Choose a brand to analyze.")
 selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
 selected_dataset = BRAND_DATASETS[selected_brand]
 st.sidebar.success(f"Using dataset: {selected_dataset}")
