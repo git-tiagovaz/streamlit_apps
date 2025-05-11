@@ -79,7 +79,8 @@ if not st.session_state.has_started_chat:
     selected_config = BRAND_DATASETS[selected_brand]
     selected_dataset = selected_config["dataset"]
     schema_type = selected_config["schema"]
-    st.sidebar.success(f"Using dataset: {selected_dataset} ({schema_type})")
+    st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
+
 
 # === Reset Chat Button ===
 if st.sidebar.button("🔄 Reset Chat"):
@@ -132,17 +133,15 @@ def load_prompt(template_path, **kwargs):
 
 def generate_sql_from_question_with_memory(history, latest_question, selected_dataset, schema_type):
     today_str = date.today().strftime('%Y-%m-%d')
-    prompt_file = "ga4_sql_prompt.txt" if schema_type == "GA4" else "ua_sql_prompt.txt"
-
+    prompt_template = "ga4_sql_prompt.txt" if schema_type == "ga4" else "ua_sql_prompt.txt"
     prompt = load_prompt(
-        prompt_file,
+        prompt_template,
         BQ_PROJECT_ID=BQ_PROJECT_ID,
         selected_dataset=selected_dataset,
         BQ_TABLE=BQ_TABLE,
         today_str=today_str,
         latest_question=latest_question
-    )
-
+)
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
