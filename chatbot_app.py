@@ -37,7 +37,8 @@ BRAND_DATASETS = {
     "KAMA": {"dataset": "analytics_338475293", "schema": "GA4"},
     "DVN": {"dataset": "analytics_304079916", "schema": "GA4"},
     "LAP ISHOP GA4": {"dataset": "analytics_432002833", "schema": "GA4"},
-    "LAP ISHOP GAU": {"dataset": "legacy_analytics_123456", "schema": "UA"},
+    "LAP GAU: UK + US": {"dataset": "76324491", "schema": "UA"},
+    "LAP GAU: FR": {"dataset": "76330830", "schema": "UA"},
 }
 
 
