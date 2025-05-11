@@ -29,14 +29,17 @@ client = bigquery.Client(credentials=gcp_credentials, project=BQ_PROJECT_ID)
 
 # === Brand to Dataset Mapping ===
 BRAND_DATASETS = {
-    "CH": "analytics_287277614",
-    "PEN": "analytics_315842208",
-    "LAP": "analytics_396352628",
-    "JPG": "analytics_320372229",
-    "RABANNE": "analytics_324242252",
-    "KAMA": "analytics_338475293",
-    "DVN": "analytics_304079916",
+    "CH": {"dataset": "analytics_287277614", "schema": "GA4"},
+    "PEN": {"dataset": "analytics_315842208", "schema": "GA4"},
+    "LAP NEW SITE": {"dataset": "analytics_396352628", "schema": "GA4"},
+    "JPG": {"dataset": "analytics_320372229", "schema": "GA4"},
+    "RABANNE": {"dataset": "analytics_324242252", "schema": "GA4"},
+    "KAMA": {"dataset": "analytics_338475293", "schema": "GA4"},
+    "DVN": {"dataset": "analytics_304079916", "schema": "GA4"},
+    "LAP ISHOP GA4": {"dataset": "analytics_432002833", "schema": "GA4"},
+    "LAP ISHOP GAU": {"dataset": "legacy_analytics_123456", "schema": "UA"},
 }
+
 
 # === Streamlit Setup ===
 st.set_page_config(page_title="Ecommerce Data Assistant", layout="wide")
@@ -71,10 +74,11 @@ if not st.session_state.has_started_chat:
     st.markdown("---")
 
 # === Brand Selection Sidebar ===
-st.sidebar.markdown("Choose a brand to analyze.")
-selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
-selected_dataset = BRAND_DATASETS[selected_brand]
-st.sidebar.success(f"Using dataset: {selected_dataset}")
+    selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
+    selected_config = BRAND_DATASETS[selected_brand]
+    selected_dataset = selected_config["dataset"]
+    schema_type = selected_config["schema"]
+    st.sidebar.success(f"Using dataset: {selected_dataset} ({schema_type})")
 
 # === Reset Chat Button ===
 if st.sidebar.button("🔄 Reset Chat"):
@@ -125,15 +129,17 @@ def load_prompt(template_path, **kwargs):
         template = f.read()
     return template.format(**kwargs)
 
-def generate_sql_from_question_with_memory(history, latest_question, selected_dataset):
+def generate_sql_from_question_with_memory(history, latest_question, selected_dataset, schema_type):
     today_str = date.today().strftime('%Y-%m-%d')
+    prompt_file = "ga4_sql_prompt.txt" if schema_type == "GA4" else "ua_sql_prompt.txt"
+
     prompt = load_prompt(
-    "ga4_sql_prompt.txt",
-    BQ_PROJECT_ID=BQ_PROJECT_ID,
-    selected_dataset=selected_dataset,
-    BQ_TABLE=BQ_TABLE,
-    today_str=today_str,
-    latest_question=latest_question
+        prompt_file,
+        BQ_PROJECT_ID=BQ_PROJECT_ID,
+        selected_dataset=selected_dataset,
+        BQ_TABLE=BQ_TABLE,
+        today_str=today_str,
+        latest_question=latest_question
     )
 
     messages = history + [{"role": "user", "content": prompt}]
@@ -143,6 +149,7 @@ def generate_sql_from_question_with_memory(history, latest_question, selected_da
         temperature=0
     )
     return clean_sql_output(response.choices[0].message.content)
+
 
 # === BigQuery Runner ===
 def run_query(sql):
