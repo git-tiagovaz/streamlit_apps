@@ -58,12 +58,7 @@ selected_config = BRAND_DATASETS[selected_brand]
 selected_dataset = selected_config["dataset"]
 schema_type = selected_config["schema"]
 st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
-
-# === Reset Chat Button ===
-if st.sidebar.button("🔄 Reset Chat"):
-    st.session_state.messages = []
-    st.sidebar.success("Chat history cleared.")
-    st.rerun()
+st.sidebar.markdown("---")
 
 
 # === Welcome Message ===
@@ -80,12 +75,11 @@ if not st.session_state.has_started_chat:
 
     📊 Your assistant will:
     1. Understand your question  
-    2. Query live GA4 BigQuery data  
+    2. Query live GA4 or UA BigQuery data  
     3. Show results with summaries and optional charts
 
     👈 Select a brand from the sidebar to get started. Then type your question below — we’ll handle the rest.
     """)
-    st.session_state.has_started_chat = True
     st.markdown("---")
 
 
@@ -159,6 +153,7 @@ def run_query(sql):
 user_prompt = st.chat_input("Ask a question about your ecommerce data...")
 
 if user_prompt:
+    st.session_state.has_started_chat = True  # ✅ move it here
     st.chat_message("user").markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "content": user_prompt})
 
