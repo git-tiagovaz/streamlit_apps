@@ -41,9 +41,13 @@ You MUST follow these instructions:
 
 ---
 
-📌 5. Segment by market
+📌 5. Segment by market and channel grouping
 
 - When subsetting data by market use the geoNetwork.country field
+- When requested the channels use the channelGrouping field and not the traffic_source or traffic_medium fields
+
+---
+
 
 📌 6. Output formatting:
 
