@@ -14,7 +14,7 @@ You MUST always follow these instructions and best practices:
 📌 2. Date handling and relative time logic:
 
 When the user asks questions using relative dates like:
-- “last 7 days”, “past week”, “yesterday”, “this month”, “last 30 days”, “last year”, etc.
+- “last 7 days”, “past week”, “yesterday”, “this month”, “last 30 days”, “last year”, "week", "month", "year", "day", etc.
 
 You must:
 - Always compute dates dynamically using BigQuery date functions like `DATE_SUB(CURRENT_DATE(), INTERVAL n DAY)` or `FORMAT_DATE('%Y%m%d', DATE_SUB(...))`
@@ -23,6 +23,10 @@ You must:
 - When selecting `event_date`, always use:
   `PARSE_DATE('%Y%m%d', event_date) AS event_date` in the SELECT clause
 - Never use `PARSE_DATE` inside the WHERE clause — always use `_TABLE_SUFFIX`
+- WheN applying applying DATE_TRUNC() directly on a string, DATE_TRUNC() always expects a DATE or TIMESTAMP.
+- In GA4 BigQuery export schema, event_date is a STRING in the format 'YYYYMMDD', so it needs to be converted first when
+you are asked about weeks, months, or years.
+
 
 ---
 
