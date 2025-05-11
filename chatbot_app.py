@@ -41,16 +41,30 @@ BRAND_DATASETS = {
     "LAP GAU: FR": {"dataset": "76330830", "schema": "UA"},
 }
 
-
 # === Streamlit Setup ===
 st.set_page_config(page_title="Ecommerce Data Assistant", layout="wide")
-st.title("🧠 Ecommerce Data Assistant with Memory")
+st.title("🧐 Ecommerce Data Assistant with Memory")
 
 # === Session State ===
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "has_started_chat" not in st.session_state:
     st.session_state.has_started_chat = False
+
+# === Brand Selection Sidebar ===
+st.sidebar.markdown("Choose a brand to analyze.")
+selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
+selected_config = BRAND_DATASETS[selected_brand]
+selected_dataset = selected_config["dataset"]
+schema_type = selected_config["schema"]
+st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
+
+# === Reset Chat Button ===
+if st.sidebar.button("🔄 Reset Chat"):
+    st.session_state.messages = []
+    st.sidebar.success("Chat history cleared.")
+    st.rerun()
+
 
 # === Welcome Message ===
 if not st.session_state.has_started_chat:
@@ -74,19 +88,6 @@ if not st.session_state.has_started_chat:
     st.session_state.has_started_chat = True
     st.markdown("---")
 
-# === Brand Selection Sidebar ===
-    selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
-    selected_config = BRAND_DATASETS[selected_brand]
-    selected_dataset = selected_config["dataset"]
-    schema_type = selected_config["schema"]
-    st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
-
-
-# === Reset Chat Button ===
-if st.sidebar.button("🔄 Reset Chat"):
-    st.session_state.messages = []
-    st.sidebar.success("Chat history cleared.")
-    st.rerun()
 
 # === Show chat history ===
 for msg in st.session_state.messages:
@@ -133,7 +134,7 @@ def load_prompt(template_path, **kwargs):
 
 def generate_sql_from_question_with_memory(history, latest_question, selected_dataset, schema_type):
     today_str = date.today().strftime('%Y-%m-%d')
-    prompt_template = "ga4_sql_prompt.txt" if schema_type == "ga4" else "ua_sql_prompt.txt"
+    prompt_template = "ga4_sql_prompt.txt" if schema_type.lower() == "ga4" else "ua_sql_prompt.txt"
     prompt = load_prompt(
         prompt_template,
         BQ_PROJECT_ID=BQ_PROJECT_ID,
@@ -141,7 +142,7 @@ def generate_sql_from_question_with_memory(history, latest_question, selected_da
         BQ_TABLE=BQ_TABLE,
         today_str=today_str,
         latest_question=latest_question
-)
+    )
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
         model="gpt-4o-mini",
@@ -149,8 +150,6 @@ def generate_sql_from_question_with_memory(history, latest_question, selected_da
         temperature=0
     )
     return clean_sql_output(response.choices[0].message.content)
-
-
 # === BigQuery Runner ===
 def run_query(sql):
     query_job = client.query(sql)
@@ -167,7 +166,7 @@ if user_prompt:
         with st.spinner("Thinking..."):
             try:
                 raw_sql = generate_sql_from_question_with_memory(
-                    st.session_state.messages, user_prompt, selected_dataset
+                    st.session_state.messages, user_prompt, selected_dataset, schema_type
                 )
                 st.code(raw_sql, language="sql")
 
