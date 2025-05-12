@@ -60,7 +60,6 @@ schema_type = selected_config["schema"]
 st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
 st.sidebar.markdown("---")
 
-
 # === Welcome Message ===
 if not st.session_state.has_started_chat:
     st.markdown("""
@@ -82,7 +81,6 @@ if not st.session_state.has_started_chat:
     """)
     st.markdown("---")
 
-
 # === Show chat history ===
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
@@ -95,7 +93,6 @@ def clean_sql_output(raw_sql):
 
 def summarize_dataframe(df: pd.DataFrame, user_question: str) -> str:
     sample_data = df.head(50).to_csv(index=False)
-
     prompt = f"""
 You are a senior Google Analytics 4 (GA4) data analyst reviewing raw BigQuery data extracted from GA4 for ecommerce and website performance. Your task is to interpret the dataset below and provide a concise, insightful summary in plain English.
 
@@ -144,7 +141,20 @@ def generate_sql_from_question_with_memory(history, latest_question, selected_da
         temperature=0
     )
     return clean_sql_output(response.choices[0].message.content)
-# === BigQuery Runner ===
+
+# === Query Estimator ===
+def estimate_query_size(sql):
+    job_config = bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
+    query_job = client.query(sql, job_config=job_config)
+    total_bytes = query_job.total_bytes_processed
+    if total_bytes < 1024 ** 2:
+        return f"{total_bytes / 1024:.2f} KB"
+    elif total_bytes < 1024 ** 3:
+        return f"{total_bytes / 1024 ** 2:.2f} MB"
+    else:
+        return f"{total_bytes / 1024 ** 3:.2f} GB"
+
+# === Query Executor ===
 def run_query(sql):
     query_job = client.query(sql)
     return query_job.result().to_dataframe()
@@ -153,7 +163,7 @@ def run_query(sql):
 user_prompt = st.chat_input("Ask a question about your ecommerce data...")
 
 if user_prompt:
-    st.session_state.has_started_chat = True  # ✅ move it here
+    st.session_state.has_started_chat = True
     st.chat_message("user").markdown(user_prompt)
     st.session_state.messages.append({"role": "user", "content": user_prompt})
 
@@ -165,22 +175,29 @@ if user_prompt:
                 )
                 st.code(raw_sql, language="sql")
 
-                df = run_query(raw_sql)
-                st.success("✅ Query ran successfully!")
-                st.dataframe(df)
+                estimated_size = estimate_query_size(raw_sql)
+                st.warning(f"⚠️ Estimated query cost: {estimated_size} of data will be scanned.")
 
-                with st.spinner("🧠 Generating insights..."):
-                    summary = summarize_dataframe(df, user_prompt)
-                    st.markdown("### 📊 Insight Summary")
-                    st.info(summary)
+                if st.button("Run Query (Accept Cost)"):
+                    df = run_query(raw_sql)
+                    st.success("✅ Query ran successfully!")
+                    st.dataframe(df)
 
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": f"Here is the result of your query:\n sql\n{raw_sql}\n\n{summary}"
-                })
+                    with st.spinner("🧠 Generating insights..."):
+                        summary = summarize_dataframe(df, user_prompt)
+                        st.markdown("### 📊 Insight Summary")
+                        st.info(summary)
 
-                if st.checkbox("📊 Show chart (if numeric/time-based)?"):
-                    st.line_chart(df.select_dtypes(include='number'))
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"Here is the result of your query:\n sql\n{raw_sql}\n\n{summary}"
+                    })
+
+                    if st.checkbox("📊 Show chart (if numeric/time-based)?"):
+                        st.line_chart(df.select_dtypes(include='number'))
+
+                else:
+                    st.info("Click the button above to run the query.")
 
             except Exception as e:
                 st.error(f"❌ Error executing query: {e}")
