@@ -173,35 +173,52 @@ if user_prompt:
                 raw_sql = generate_sql_from_question_with_memory(
                     st.session_state.messages, user_prompt, selected_dataset, schema_type
                 )
-                st.code(raw_sql, language="sql")
-
                 estimated_size = estimate_query_size(raw_sql)
-                st.warning(f"⚠️ Estimated query cost: {estimated_size} of data will be scanned.")
 
-                if st.button("Run Query (Accept Cost)"):
-                    df = run_query(raw_sql)
+                # Store SQL and prompt in session state for confirmation
+                st.session_state.generated_sql = raw_sql
+                st.session_state.latest_user_prompt = user_prompt
+                st.session_state.estimated_size = estimated_size
+                st.session_state.awaiting_confirmation = True
+
+            except Exception as e:
+                st.error(f"❌ Error preparing query: {e}")
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"❌ Error preparing query: {e}"
+                })
+
+# === Query Confirmation Flow ===
+if st.session_state.get("awaiting_confirmation", False):
+    with st.chat_message("assistant"):
+        st.code(st.session_state.generated_sql, language="sql")
+        st.warning(f"⚠️ Estimated query cost: {st.session_state.estimated_size} of data will be scanned.")
+
+        if st.button("Run Query (Accept Cost)"):
+            with st.spinner("Running query..."):
+                try:
+                    df = run_query(st.session_state.generated_sql)
                     st.success("✅ Query ran successfully!")
                     st.dataframe(df)
 
                     with st.spinner("🧠 Generating insights..."):
-                        summary = summarize_dataframe(df, user_prompt)
+                        summary = summarize_dataframe(df, st.session_state.latest_user_prompt)
                         st.markdown("### 📊 Insight Summary")
                         st.info(summary)
 
                     st.session_state.messages.append({
                         "role": "assistant",
-                        "content": f"Here is the result of your query:\n sql\n{raw_sql}\n\n{summary}"
+                        "content": f"Here is the result of your query:\n sql\n{st.session_state.generated_sql}\n\n{summary}"
                     })
 
                     if st.checkbox("📊 Show chart (if numeric/time-based)?"):
                         st.line_chart(df.select_dtypes(include='number'))
 
-                else:
-                    st.info("Click the button above to run the query.")
+                except Exception as e:
+                    st.error(f"❌ Error executing query: {e}")
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"❌ Error executing query: {e}"
+                    })
 
-            except Exception as e:
-                st.error(f"❌ Error executing query: {e}")
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": f"❌ Error executing query: {e}"
-                })
+            st.session_state.awaiting_confirmation = False
