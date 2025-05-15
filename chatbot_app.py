@@ -50,7 +50,7 @@ def login_ui():
 
     with st.container():
         st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        st.image("assets/GA4_Logo.png", width=80, caption="Logo")
+        st.image("assets/GA4_Logo.png", width=80)
         st.markdown("<h2 style='text-align: center;'>Login</h2>", unsafe_allow_html=True)
 
         st.markdown("### 👤 Login to Ecommerce Data Assistant")
@@ -63,7 +63,7 @@ def login_ui():
             if username in VALID_USERS and VALID_USERS[username] == password:
                 st.session_state["authenticated"] = True
                 st.success(f"Welcome, {username}!")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("❌ Invalid username or password")
         st.markdown("</div>", unsafe_allow_html=True)
