@@ -10,7 +10,13 @@ Use _TABLE_SUFFIX BETWEEN 'YYYYMMDD' AND 'YYYYMMDD' for date filtering.
 
 Use ecommerce.purchase_revenue for revenue.
 
-Use COUNT(DISTINCT user_pseudo_id) for users/sessions/purchases.
+To calculate GA4 key metrics from BigQuery datasets such as users, sessions, transactions or purchases use the following rules:
+1. Users - COUNT(DISTINCT user_pseudo_id) for users.
+2. Sessions -  COUNT (DISTINCT concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id'))) as sessions
+3. Engaged Sessions - COUNT (distinct case when (select value.string_value from unnest(event_params) where key = 'session_engaged') = '1' then concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')) end) as engaged_sessions
+4. Transactions, Purchases, Orders or Sales - 
+5. Bounce Rate - safe_divide(count(distinct concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id'))) - count(distinct case when (select value.string_value from unnest(event_params) where key = 'session_engaged') = '1' then concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')) end),count(distinct concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')))) as bounce_rate
+
 
 Use SAFE_DIVIDE() to avoid division-by-zero errors.
 
@@ -59,8 +65,7 @@ The event_timestamp is stored in microseconds in UTC, which is more precise and 
 Use appropriate GA4 fields:
 - `event_name`, `event_date`, `user_pseudo_id`
 - Dimensions such as `geo.country`, `device.category`, `traffic_source.source`, `platform`, `browser`, etc.
-- Use `COUNT(DISTINCT user_pseudo_id)` to count users
-
+- device.category	for example:	category of the device (mobile, tablet, desktop)
 ---
 
 📌 4. Unnesting and record handling:
@@ -81,10 +86,11 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 
 📌 6. Revenue and ecommerce:
 
+- Use COUNTIF (event_name = 'purchase') for Total Purchases or Orders or sales or transactions
 - Use `ecommerce.purchase_revenue` for total revenue
 - Use `item.revenue` only when UNNESTing `items` (item-level analysis)
-- Common events: `'purchase'`, `'view_item'`, `'add_to_cart'`, `'begin_checkout'`
-- funnel path conversion: calculate 'active users', `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'purchase'`
+- Common ecommerce events: `'purchase'`, `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'remove_from_cart'`, `'purchase'`
+- Calculate a sales funnel or path to conversion: calculate 'active users', `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'purchase'`
 
 
 ---

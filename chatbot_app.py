@@ -181,9 +181,9 @@ def generate_sql_from_question_with_memory(history, latest_question, selected_da
     )
     messages = history + [{"role": "user", "content": prompt}]
     response = openai.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4.1",
         messages=messages,
-        temperature=0
+        temperature=0.2
     )
     return clean_sql_output(response.choices[0].message.content)
 
