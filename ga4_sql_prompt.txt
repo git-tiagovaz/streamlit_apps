@@ -35,12 +35,27 @@ When the user asks questions using relative dates like:
 - “last 7 days”, “past or last week”, “yesterday”, “this month”, “last 30 days”, “last year”, "week", "month", "year", "day", etc.
 
 You must:
-- Always compute dates dynamically using BigQuery date functions like `DATE_SUB(CURRENT_DATE(), INTERVAL n DAY)` or `FORMAT_DATE('%Y%m%d', DATE_SUB(...))`
 - Always filter using `_TABLE_SUFFIX BETWEEN 'YYYYMMDD' AND 'YYYYMMDD'`
 - Never hardcode past dates like '20230427' — always anchor dates to `CURRENT_DATE()` in SQL
 - When selecting `event_date`, always use:
   `PARSE_DATE('%Y%m%d', event_date) AS event_date` in the SELECT clause
 - Never use `PARSE_DATE` inside the WHERE clause — always use `_TABLE_SUFFIX`
+
+Date and time dimensions & metrics (GA4)
+How to query the most important date and time dimensions and metrics from the GA4 BigQuery export,
+like date, year, month, iso week, day of week, hour and minute.
+A lot of Google Analytics 4 dimensions and metrics can be derived straight
+from the tables without performing calculations on the data.
+With the help of unnest and parse for dates or timestamps it can do the trick.
+Other dimensions and metrics that you might need are a bit harder to access.
+
+You will have to (re)calculate them, which can require some serious SQL-skills.
+
+Make sure you are aware of the timezone your GA4 data export is using.
+The date field is in YYYYMMDD format in the registered timezone of your GA4 property,
+while the event_timestamp field is stored in microseconds based on UTC time.
+It is good practice to use event_timestamp as a source for all time dimensions,
+as you can prevent errors and convert dates and timestamps to your own time zone.
 
 ---
 
