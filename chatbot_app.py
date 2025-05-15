@@ -7,6 +7,8 @@ from google.cloud import bigquery
 from google.oauth2 import service_account
 import openai
 import warnings
+from app_credentials import VALID_USERS
+
 
 warnings.filterwarnings("ignore", message="BigQuery Storage module not found")
 
@@ -27,6 +29,46 @@ if not OPENAI_API_KEY:
 openai.api_key = OPENAI_API_KEY
 client = bigquery.Client(credentials=gcp_credentials, project=BQ_PROJECT_ID)
 
+def login_ui():
+    st.markdown("""
+        <style>
+        .login-container {
+            max-width: 400px;
+            margin: auto;
+            padding: 2rem;
+            border-radius: 1rem;
+            background-color: #f9f9f9;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .logo-img {
+            display: block;
+            margin: 0 auto 1rem;
+            width: 80px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    with st.container():
+        st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        st.image("/Users/tiagovaz/my_projects/GA4_Logo.png", width=80, caption="Logo")
+        st.markdown("<h2 style='text-align: center;'>Login</h2>", unsafe_allow_html=True)
+
+        st.markdown("### 👤 Login to Ecommerce Data Assistant")
+
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        login = st.button("🔐 Login")
+
+        if login:
+            if username in VALID_USERS and VALID_USERS[username] == password:
+                st.session_state["authenticated"] = True
+                st.success(f"Welcome, {username}!")
+                st.experimental_rerun()
+            else:
+                st.error("❌ Invalid username or password")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+
 # === Brand to Dataset Mapping ===
 BRAND_DATASETS = {
     "CH": {"dataset": "analytics_287277614", "schema": "GA4"},
@@ -42,8 +84,10 @@ BRAND_DATASETS = {
 }
 
 # === Streamlit Setup ===
-st.set_page_config(page_title="Ecommerce Data Assistant", layout="wide")
-st.title("🧐 Ecommerce Data Assistant with Memory")
+st.set_page_config(page_title="GA4 Data Assistant", layout="wide")
+st.title("GA4 Agentic AI Assistant")
+st.markdown("🔍 **Insight Assistant – Not a decision-maker. Use insights to support, not replace, human judgment.**", unsafe_allow_html=True)
+
 
 # === Session State ===
 if "messages" not in st.session_state:
@@ -52,7 +96,7 @@ if "has_started_chat" not in st.session_state:
     st.session_state.has_started_chat = False
 
 # === Brand Selection Sidebar ===
-st.sidebar.markdown("Choose a brand to analyze.")
+st.sidebar.markdown("Brand Selection.")
 selected_brand = st.sidebar.selectbox("Choose a brand:", list(BRAND_DATASETS.keys()))
 selected_config = BRAND_DATASETS[selected_brand]
 selected_dataset = selected_config["dataset"]
@@ -60,10 +104,14 @@ schema_type = selected_config["schema"]
 st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
 st.sidebar.markdown("---")
 
+# === Sidebar Disclaimer ===
+st.sidebar.markdown("---")
+st.sidebar.markdown("🔒 ** For internal analytics team use only - no PII data will be revelead or shared **", unsafe_allow_html=True)
+
 # === Welcome Message ===
 if not st.session_state.has_started_chat:
     st.markdown("""
-    ### 🗭 Welcome to Your Ecommerce Data Assistant
+    ###  Welcome to Your Ecommerce Data Assistant
 
     💬 Just ask your question in plain English — no SQL needed!
 
@@ -75,9 +123,11 @@ if not st.session_state.has_started_chat:
     📊 Your assistant will:
     1. Understand your question  
     2. Query live GA4 or UA BigQuery data  
-    3. Show results with summaries and optional charts
+    3. Show results with summaries
 
     👈 Select a brand from the sidebar to get started. Then type your question below — we’ll handle the rest.
+
+    **Note:** Always confirm the data before making decisions. This assistant is here to help, not to replace your expertise.
     """)
     st.markdown("---")
 
@@ -92,7 +142,7 @@ def clean_sql_output(raw_sql):
     return re.sub(r"sql|", "", raw_sql).strip()
 
 def summarize_dataframe(df: pd.DataFrame, user_question: str) -> str:
-    sample_data = df.head(50).to_csv(index=False)
+    sample_data = df.head(30).to_csv(index=False)
     prompt = f"""
 You are a senior Google Analytics 4 (GA4) data analyst reviewing raw BigQuery data extracted from GA4 for ecommerce and website performance. Your task is to interpret the dataset below and provide a concise, insightful summary in plain English.
 
@@ -109,7 +159,8 @@ Based on the data above, perform the following:
 - Use non-technical language where possible, as if explaining to a digital marketing manager.
 - Focus on business impact: what the data means and what could be actionable.
 
-Do **not** return code, markdown, or SQL — only write a plain English paragraph with clear, practical insights.
+Do **not** return code, markdown, or SQL — only write in plain English.
+You can write in bullet points or separated paragraphs for clear, practical insights.
 """
     response = openai.chat.completions.create(
         model="gpt-4o",
@@ -210,9 +261,6 @@ if st.session_state.get("awaiting_confirmation", False):
                         "role": "assistant",
                         "content": f"Here is the result of your query:\n sql\n{st.session_state.generated_sql}\n\n{summary}"
                     })
-
-                    if st.checkbox("📊 Show chart (if numeric/time-based)?"):
-                        st.line_chart(df.select_dtypes(include='number'))
 
                 except Exception as e:
                     st.error(f"❌ Error executing query: {e}")
