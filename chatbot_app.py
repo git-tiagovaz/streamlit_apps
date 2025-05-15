@@ -19,7 +19,7 @@ gcp_credentials = service_account.Credentials.from_service_account_info(
 BQ_PROJECT_ID = st.secrets["gcp_service_account"]["project_id"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 BQ_TABLE = "events_*"
-CHANNEL_RULES_TABLE = "ga4_reference.custom_channel_grouping"
+CHANNEL_RULES_TABLE = "algebraic-pier-330310.ga4_reference.custom_channel_grouping"
 
 # === Validate required keys ===
 if not OPENAI_API_KEY:
@@ -169,15 +169,19 @@ def load_prompt(template_path, **kwargs):
         template = f.read()
     return template.format(**kwargs)
 
-def generate_sql_prompt(history, user_question, selected_dataset):
+def generate_sql_prompt(history, user_question, selected_dataset, schema_type=None):
     today_str = date.today().strftime('%Y-%m-%d')
     prompt_template = "ga4_sql_prompt.txt"
 
     # Check if user mentioned channels/acquisition
     if any(kw in user_question.lower() for kw in ["channel", "acquisition", "source", "medium"]):
-        channel_join = f"\n\nNote: The user has asked a channel-based question. Consider joining with `{CHANNEL_RULES_TABLE}` on REGEXP_CONTAINS rules."
+        channel_join = f"""
+    \n\nThe user has asked a channel-based question.
+    To enhance the analysis, consider LEFT JOINing with `{CHANNEL_RULES_TABLE}` using `REGEXP_CONTAINS` rules on fields such as `traffic_source.source` and `traffic_source.medium`.
+    """
     else:
-        channel_join = ""
+        channel_join = ""  # No need to mention it in non-channel-related prompts
+
 
     prompt = load_prompt(
         prompt_template,
