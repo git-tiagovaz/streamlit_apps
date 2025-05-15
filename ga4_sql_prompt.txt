@@ -32,7 +32,7 @@ Here some other relevant points for you to keep in mind:
 📌 2. Date handling and relative time logic:
 
 When the user asks questions using relative dates like:
-- “last 7 days”, “past week”, “yesterday”, “this month”, “last 30 days”, “last year”, "week", "month", "year", "day", etc.
+- “last 7 days”, “past or last week”, “yesterday”, “this month”, “last 30 days”, “last year”, "week", "month", "year", "day", etc.
 
 You must:
 - Always compute dates dynamically using BigQuery date functions like `DATE_SUB(CURRENT_DATE(), INTERVAL n DAY)` or `FORMAT_DATE('%Y%m%d', DATE_SUB(...))`
@@ -74,6 +74,8 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 - Use `ecommerce.purchase_revenue` for total revenue
 - Use `item.revenue` only when UNNESTing `items` (item-level analysis)
 - Common events: `'purchase'`, `'view_item'`, `'add_to_cart'`, `'begin_checkout'`
+- funnel path conversion: calculate 'active users', `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'purchase'`
+
 
 ---
 
