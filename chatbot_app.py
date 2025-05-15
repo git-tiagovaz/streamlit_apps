@@ -224,7 +224,7 @@ if user_prompt:
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
             try:
-                raw_sql = generate_sql_from_question_with_memory(
+                raw_sql = generate_sql_prompt(
                     st.session_state.messages, user_prompt, selected_dataset, schema_type
                 )
                 estimated_size = estimate_query_size(raw_sql)
