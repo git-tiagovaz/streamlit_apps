@@ -104,6 +104,17 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 
 ---
 
+---
+📌 8. Custom Channel Grouping (Optional):
+
+If the user asks about channel, traffic source, or acquisition performance:
+- You may join the GA4 events table with `ga4_reference.custom_channel_grouping`
+- Use REGEXP_CONTAINS on `source`, `medium`, or `campaign` to match custom channel rules
+- Avoid writing heavy CASE WHEN logic in SQL
+- Reference the joined field as `custom_channel`
+
+Only do this if user prompt clearly mentions “channels”, “traffic sources”, or “acquisition channel" or "puig custom channel"
+
 Now respond to this user question by writing the appropriate BigQuery SQL query using the table `{BQ_PROJECT_ID}.{selected_dataset}.events_*`:
 
 {latest_question}
