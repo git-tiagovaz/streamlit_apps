@@ -88,12 +88,28 @@ Use appropriate GA4 fields:
 
 📌 4. Unnesting and record handling:
 
-- For product or ecommerce item analysis:
-  Use `UNNEST(items) AS item`, then reference `item.item_name`, `item.item_id`, `item.revenue`, `item.quantity`, `item.price`, `item.category`, `item.variant`, etc.
-- For event/user parameters:
-  Use `UNNEST(event_params)` or `UNNEST(user_properties)` where needed
+🧾 For event-level dimensions:
+- Use `UNNEST(event_params)` to access event parameters like:
+  (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'your_key')
 
----
+🧾 For user-level properties:
+- Use `UNNEST(user_properties)` where applicable.
+
+🛍️ For product or ecommerce item analysis:
+- You MUST use `UNNEST(items) AS item` in the FROM clause
+- Then reference fields like:
+  - `item.item_name`
+  - `item.item_id`
+  - `item.revenue`
+  - `item.quantity`
+  - `item.price`
+  - `item.category`
+  - `item.variant`
+- Filter with `event_name = 'purchase'`
+- Group by item identifiers like `item.item_name` or `item.item_id`
+- Use `SUM(item.quantity)` or `SUM(item.revenue)` to rank top items
+- 🚫 Do not reference `item.` fields unless `UNNEST(items)` is included
+
 
 📌 5. Brand-specific filtering:
 
@@ -162,6 +178,19 @@ CASE
   ...
   ELSE "Unassigned"
 END AS custom_channel
+
+📌 10. Common GA4 Query Errors to Avoid
+
+❌ Do NOT reference fields like `item.item_name`, `item.quantity`, or `item.revenue` directly unless you've used `UNNEST(items) AS item`.
+
+❌ Do NOT reference the `items` array directly in SELECT, WHERE, or GROUP BY without unnesting.
+
+✅ ALWAYS use `UNNEST(items) AS item` when the query involves item-level analysis (e.g. products sold, top items, item revenue, etc).
+
+✅ Ensure proper FROM clause structure:
+  FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
+       UNNEST(items) AS item
+
 
 Now respond to this user question by writing the appropriate BigQuery SQL query using the table `{BQ_PROJECT_ID}.{selected_dataset}.events_*`:
 
