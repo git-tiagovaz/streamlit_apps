@@ -35,28 +35,46 @@ Here some other relevant points for you to keep in mind:
 
 ---
 
-📌 2. Date Handling and Relative Time Logic:
+📌 2. Date Handling and Relative Time Logic
 
-⚠️ Important: GA4 data in BigQuery is delayed by approximately 48 hours.  
-This means that `CURRENT_DATE()` will reference a date that is ahead of the latest available table.  
-Always use a provided reference date instead — defined as `{today_str}`, which is already 2 days behind the real current date.
+⚠️ GA4 data in BigQuery is delayed by approximately 48 hours.
 
-When the user asks questions using relative time expressions like:
-- “last 7 days”, “past week”, “yesterday”, “this month”, “last 30 days”, “last year”, “week”, “month”, “year”, “day”, etc.
+❗ NEVER use CURRENT_DATE() or CURRENT_DATE() - INTERVAL n DAY.
 
-You must:
-- Never use `CURRENT_DATE()` or `CURRENT_DATE() - INTERVAL n DAY` inside GA4 queries
-- Always derive the date range **relative to `{today_str}`**, which reflects the last fully available day in GA4 exports
-- Always filter with:
-  ```sql
+✅ ALWAYS use `{today_str}` as the reference date, which is 2 days behind the real current date and reflects the last fully available GA4 export day.
+
+When filtering by date, you MUST always use:
   _TABLE_SUFFIX BETWEEN 'YYYYMMDD' AND 'YYYYMMDD'
 
-When selecting event dates, always use:
-PARSE_DATE('%Y%m%d', event_date) AS event_date
-If date-level breakdowns are required (like by day, week, month, hour), use event_timestamp and convert it with TIMESTAMP_MICROS() or DATETIME(TIMESTAMP_MICROS(...)) if needed.
+### Interpret relative time expressions like this:
 
-🕓 Note: The event_date is based on the GA4 property’s timezone.
-The event_timestamp is stored in microseconds in UTC, which is more precise and recommended for time-based filtering and grouping.
+- "last 7 days":
+  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(DATE '{today_str}', INTERVAL 6 DAY))
+                    AND FORMAT_DATE('%Y%m%d', DATE '{today_str}')
+
+- "last 15 days":
+  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(DATE '{today_str}', INTERVAL 14 DAY))
+                    AND FORMAT_DATE('%Y%m%d', DATE '{today_str}')
+
+- "yesterday":
+  _TABLE_SUFFIX = FORMAT_DATE('%Y%m%d', DATE_SUB(DATE '{today_str}', INTERVAL 1 DAY))
+
+- "this month":
+  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_TRUNC(DATE '{today_str}', MONTH))
+                    AND FORMAT_DATE('%Y%m%d', DATE '{today_str}')
+
+- "last month":
+  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_TRUNC(DATE_SUB(DATE '{today_str}', INTERVAL 1 MONTH), MONTH))
+                    AND FORMAT_DATE('%Y%m%d', DATE_SUB(DATE_TRUNC(DATE '{today_str}', MONTH), INTERVAL 1 DAY))
+
+- "last year":
+  _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_TRUNC(DATE_SUB(DATE '{today_str}', INTERVAL 1 YEAR), YEAR))
+                    AND FORMAT_DATE('%Y%m%d', DATE_SUB(DATE_TRUNC(DATE '{today_str}', YEAR), INTERVAL 1 DAY))
+
+💡 Adjust all similar time expressions relative to `{today_str}`.
+
+🗓️ In SELECT clauses, use:
+  PARSE_DATE('%Y%m%d', event_date) AS event_date
 
 ---
 
