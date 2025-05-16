@@ -2,7 +2,7 @@ import os
 import re
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime import date, timedelta
 from google.cloud import bigquery
 from google.oauth2 import service_account
 import openai
@@ -179,7 +179,8 @@ def load_prompt(template_path, **kwargs):
     return template.format(**kwargs)
 
 def generate_sql_prompt(history, user_question, selected_dataset, schema_type=None):
-    today_str = date.today().strftime('%Y-%m-%d')
+    today = date.today() - timedelta(days=2)
+    today_str = today.strftime('%Y-%m-%d')  # This becomes your {today_str} in the prompt
     prompt_template = "ga4_sql_prompt.txt"
 
     # Check if user mentioned channels/acquisition
