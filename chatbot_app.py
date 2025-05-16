@@ -32,27 +32,36 @@ client = bigquery.Client(credentials=gcp_credentials, project=BQ_PROJECT_ID)
 
 def login_ui():
     st.markdown("""
-        <style>
+            <style>
         .login-container {
             max-width: 400px;
             margin: auto;
             padding: 2rem;
-            border-radius: 1rem;
-            background-color: #f9f9f9;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
         }
-        .logo-img {
-            display: block;
-            margin: 0 auto 1rem;
-            width: 80px;
+        .login-title {
+            text-align: center;
+            font-size: 2em;
+            font-weight: 600;
+        }
+        .login-subtitle {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.1em;
+        }
+        .login-icon {
+            text-align: center;
+            font-size: 3em;
+            margin-bottom: 0.5rem;
         }
         </style>
     """, unsafe_allow_html=True)
 
     with st.container():
-        st.markdown('<div class="login-container">', unsafe_allow_html=True)
-        st.image("assets/GA4_Logo.png", width=80)
-        st.markdown("<h2 style='text-align: center;'>Login</h2>", unsafe_allow_html=True)
+        #st.markdown('<div class="login-container">', unsafe_allow_html=True)
+        st.image("assets/GA4_Logo.png", width=250)
 
         st.markdown("### 👤 Login to Ecommerce Data Assistant")
 
