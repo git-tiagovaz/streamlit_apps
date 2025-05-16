@@ -100,15 +100,20 @@ Use appropriate GA4 fields:
 - Then reference fields like:
   - `item.item_name`
   - `item.item_id`
-  - `item.revenue`
   - `item.quantity`
   - `item.price`
-  - `item.category`
-  - `item.variant`
+  - `item.item_brand`
+  - `item.item_category`, `item.item_variant`, etc.
+
+❗ Important:
+- GA4 does **not** include `item.revenue` as a field
+- Compute item revenue as: `item.price * item.quantity AS item_revenue`
+
+✅ Always:
 - Filter with `event_name = 'purchase'`
 - Group by item identifiers like `item.item_name` or `item.item_id`
-- Use `SUM(item.quantity)` or `SUM(item.revenue)` to rank top items
-- 🚫 Do not reference `item.` fields unless `UNNEST(items)` is included
+- Order by `SUM(item.quantity)` or `SUM(item.price * item.quantity)`
+
 
 
 📌 5. Brand-specific filtering:
@@ -181,16 +186,16 @@ END AS custom_channel
 
 📌 10. Common GA4 Query Errors to Avoid
 
-❌ Do NOT reference fields like `item.item_name`, `item.quantity`, or `item.revenue` directly unless you've used `UNNEST(items) AS item`.
+❌ Do NOT reference `item.revenue` — this field does not exist in GA4 BigQuery exports
 
-❌ Do NOT reference the `items` array directly in SELECT, WHERE, or GROUP BY without unnesting.
+✅ Instead, calculate revenue per item as:
+   `item.price * item.quantity AS item_revenue`
 
-✅ ALWAYS use `UNNEST(items) AS item` when the query involves item-level analysis (e.g. products sold, top items, item revenue, etc).
+❌ Do NOT reference `item.` fields unless you've used `UNNEST(items) AS item` in the FROM clause
 
-✅ Ensure proper FROM clause structure:
-  FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
-       UNNEST(items) AS item
-
+✅ Always write:
+   FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
+        UNNEST(items) AS item
 
 Now respond to this user question by writing the appropriate BigQuery SQL query using the table `{BQ_PROJECT_ID}.{selected_dataset}.events_*`:
 
