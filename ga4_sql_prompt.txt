@@ -130,7 +130,50 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 - Use `item.revenue` only when UNNESTing `items` (item-level analysis)
 - Common ecommerce events: `'purchase'`, `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'remove_from_cart'`, `'purchase'`
 - Calculate a sales funnel or path to conversion: calculate 'active users', `'view_item'`, `'add_to_cart'`, `'begin_checkout'`, `'purchase'`
+- To analyze conversion or purchase funnels, such as: view_item → add_to_cart → begin_checkout → purchase
 
+✅ You MUST follow this process:
+1. Filter for only the funnel event_names
+2. Use a `WITH base AS (...)` clause to gather all funnel events per user across the timeframe
+3. Use `MIN(CASE WHEN event_name = ...)` to extract each step’s first timestamp
+4. Compare timestamps to simulate user progression (e.g. add_to_cart_ts > view_item_ts)
+5. NEVER use `ARRAY_POSITION`, ARRAY_AGG or positional logic — it will break or be unsupported
+
+✅ Use this recommended structure:
+
+WITH base AS (
+  SELECT
+    user_pseudo_id,
+    event_name,
+    event_timestamp,
+    CONCAT(user_pseudo_id, CAST((SELECT value.int_value FROM UNNEST(event_params) WHERE key = 'ga_session_id') AS STRING)) AS session_id,
+    _TABLE_SUFFIX
+  FROM
+    `{BQ_PROJECT_ID}.{selected_dataset}.events_*`
+  WHERE
+    _TABLE_SUFFIX BETWEEN FORMAT_DATE('%Y%m%d', DATE_SUB(DATE '{today_str}', INTERVAL 6 DAY))
+    AND FORMAT_DATE('%Y%m%d', DATE '{today_str}')
+    AND event_name IN ('view_item', 'add_to_cart', 'begin_checkout', 'purchase')
+),
+funnel AS (
+  SELECT
+    session_id,
+    user_pseudo_id,
+    MIN(CASE WHEN event_name = 'view_item' THEN event_timestamp END) AS view_item_ts,
+    MIN(CASE WHEN event_name = 'add_to_cart' THEN event_timestamp END) AS add_to_cart_ts,
+    MIN(CASE WHEN event_name = 'begin_checkout' THEN event_timestamp END) AS begin_checkout_ts,
+    MIN(CASE WHEN event_name = 'purchase' THEN event_timestamp END) AS purchase_ts
+  FROM base
+  GROUP BY session_id, user_pseudo_id
+)
+SELECT
+  COUNT(DISTINCT session_id) AS total_sessions,
+  COUNT(DISTINCT user_pseudo_id) AS total_users,
+  COUNTIF(view_item_ts IS NOT NULL) AS view_item,
+  COUNTIF(add_to_cart_ts IS NOT NULL AND add_to_cart_ts > view_item_ts) AS add_to_cart,
+  COUNTIF(begin_checkout_ts IS NOT NULL AND begin_checkout_ts > add_to_cart_ts) AS begin_checkout,
+  COUNTIF(purchase_ts IS NOT NULL AND purchase_ts > begin_checkout_ts) AS purchase
+FROM funnel
 
 ---
 
