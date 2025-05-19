@@ -58,7 +58,13 @@ Use appropriate GA4 fields:
 📌 4. Unnesting and record handling (GA4 raw schema):
 
 - For product or ecommerce item analysis:
-  Use UNNEST(items) AS item, then reference:
+Always use UNNEST(items) inside the FROM clause only:
+✅ Example:
+FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
+     UNNEST(items) AS item
+
+❌ Never use CROSS JOIN UNNEST() or put UNNEST at the top level.
+
   - item.item_id
   - item.item_name
   - item.item_brand
