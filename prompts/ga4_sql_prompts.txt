@@ -58,15 +58,28 @@ Use appropriate GA4 fields:
 📌 4. Unnesting and record handling (GA4 raw schema):
 
 - For product or ecommerce item analysis:
-  Use UNNEST(items) AS item, then reference item.item_name, item.item_id, item.quantity, item.price, item.item_category, item.item_variant, etc.
-  Compute revenue per item as: item.price * item.quantity AS item_revenue
+  Use UNNEST(items) AS item, then reference:
+  - item.item_id
+  - item.item_name
+  - item.item_brand
+  - item.item_variant
+  - item.item_category, item.item_category2, item.item_category3, item.item_category4, item.item_category5
+  - item.item_list_id, item.item_list_name, item.item_list_index
+  - item.promotion_id, item.promotion_name, item.creative_name, item.creative_slot
+  - item.coupon, item.affiliation, item.location_id
+  - item.price, item.price_in_usd, item.quantity
+  - item.item_revenue, item.item_revenue_in_usd
+  - item.item_refund, item.item_refund_in_usd
+
+- To extract custom item parameters like dimension1:
+  Use (SELECT value.string_value FROM UNNEST(item.item_params) WHERE key = 'dimension1')
 
 - For event/user parameters:
   Use UNNEST(event_params) or UNNEST(user_properties) where needed
   Example: (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'your_key')
 
-✅ Always filter item-level queries by event_name = 'purchase'
-✅ Always group by item.item_name or item.item_id for bestsellers or product reports
+✅ Group by item.item_id or item.item_name for bestsellers or product reports
+✅ Use item.price * item.quantity for derived revenue if item.item_revenue is null
 
 ---
 
@@ -79,7 +92,7 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 📌 6. Revenue and ecommerce:
 - Use COUNTIF(event_name = 'purchase') for Total Purchases or Orders or Sales
 - Use ecommerce.purchase_revenue for total revenue
-- Use item.price * item.quantity for item-level revenue
+- Use item.price * item.quantity or item.item_revenue for item-level revenue
 - Common ecommerce events: 'purchase', 'view_item', 'add_to_cart', 'begin_checkout', 'remove_from_cart'
 - To analyze conversion or purchase funnels, such as: view_item → add_to_cart → begin_checkout → purchase
 
@@ -110,7 +123,11 @@ If the user asks for:
 
 ✅ Always:
 - UNNEST the items array
-- Filter for event_name = "purchase"
+- Use the appropriate event_name based on the user's intent:
+  - 'purchase' → purchased items
+  - 'add_to_cart' → items added to cart
+  - 'view_item' → items viewed
+  - 'refund' → refunded items
 - Group by item.item_id or item.item_name
 - Order by SUM(item.quantity) or SUM(item.price * item.quantity)
 
