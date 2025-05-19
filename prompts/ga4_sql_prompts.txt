@@ -14,7 +14,7 @@ To calculate GA4 key metrics from BigQuery datasets such as users, sessions, tra
 1. Users - COUNT(DISTINCT user_pseudo_id) for users.
 2. Sessions - COUNT(DISTINCT concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id'))) as sessions
 3. Engaged Sessions - COUNT(distinct case when (select value.string_value from unnest(event_params) where key = 'session_engaged') = '1' then concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')) end) as engaged_sessions
-4. Transactions, Purchases, Orders or Sales - 
+4. Transactions, Purchases, Orders or Sales - COUNTIF(event_name = 'purchase')
 5. Bounce Rate - safe_divide(count(distinct concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id'))) - count(distinct case when (select value.string_value from unnest(event_params) where key = 'session_engaged') = '1' then concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')) end), count(distinct concat(user_pseudo_id,(select value.int_value from unnest(event_params) where key = 'ga_session_id')))) as bounce_rate
 
 Use SAFE_DIVIDE() to avoid division-by-zero errors.
@@ -55,22 +55,18 @@ Use appropriate GA4 fields:
 
 ---
 
-📌 4. Unnesting and record handling:
+📌 4. Unnesting and record handling (GA4 raw schema):
 
-🛍️ For GA4-native schema:
-- Use UNNEST(items) AS item, then reference item.item_name, item.item_id, item.revenue, item.quantity, item.price, item.category, item.variant, etc.
+- For product or ecommerce item analysis:
+  Use UNNEST(items) AS item, then reference item.item_name, item.item_id, item.quantity, item.price, item.item_category, item.item_variant, etc.
+  Compute revenue per item as: item.price * item.quantity AS item_revenue
 
-🛍️ For flattened schemas where item fields are comma-separated strings:
-- Use SPLIT() to create arrays from fields like `item_id`, `item_name`, `items_quantity`
-- Use UNNEST(GENERATE_ARRAY(0, ARRAY_LENGTH(SPLIT(item_id, ',')) - 1)) AS pos to iterate over index positions
-- Use SPLIT(...)[OFFSET(pos)] to align and extract corresponding values by index
-- Always wrap this logic in a WITH clause or subquery using exploded_items AS (...) to keep syntax valid in BigQuery
-- Use SAFE_CAST to convert quantities to integers when needed
+- For event/user parameters:
+  Use UNNEST(event_params) or UNNEST(user_properties) where needed
+  Example: (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'your_key')
 
-✅ You MUST do this when item_id contains multiple values in a single row, separated by commas.
-
-🧾 For event/user parameters:
-Use UNNEST(event_params) or UNNEST(user_properties) where needed
+✅ Always filter item-level queries by event_name = 'purchase'
+✅ Always group by item.item_name or item.item_id for bestsellers or product reports
 
 ---
 
@@ -81,11 +77,17 @@ For the brands **RABANNE** and **JPG**, always exclude rows where:
 ---
 
 📌 6. Revenue and ecommerce:
-- Use COUNTIF (event_name = 'purchase') for Total Purchases or Orders or sales or transactions
+- Use COUNTIF(event_name = 'purchase') for Total Purchases or Orders or Sales
 - Use ecommerce.purchase_revenue for total revenue
-- Use item.revenue only when UNNESTing items (item-level analysis)
-- Common ecommerce events: 'purchase', 'view_item', 'add_to_cart', 'begin_checkout', 'remove_from_cart', 'purchase'
-- Calculate a sales funnel or path to conversion: calculate 'active users', 'view_item', 'add_to_cart', 'begin_checkout', 'purchase'
+- Use item.price * item.quantity for item-level revenue
+- Common ecommerce events: 'purchase', 'view_item', 'add_to_cart', 'begin_checkout', 'remove_from_cart'
+- To analyze conversion or purchase funnels, such as: view_item → add_to_cart → begin_checkout → purchase
+
+✅ Follow this process:
+1. Filter for event_name IN (...) for funnel steps
+2. Use WITH clause to collect per-session or per-user funnel events
+3. Use MIN(CASE WHEN event_name = 'step' THEN event_timestamp END) logic to order progression
+4. Filter sequences using timestamp comparison
 
 ---
 
@@ -106,13 +108,11 @@ If the user asks for:
 - “Bestsellers”
 - “Best performing products”
 
-Always assume they want item-level purchase data.
-
-You MUST:
-- Either UNNEST the items array if it exists (GA4 schema), or
-- Split comma-separated values into aligned arrays and extract them with UNNEST+OFFSET if using a flattened dataset
+✅ Always:
+- UNNEST the items array
 - Filter for event_name = "purchase"
-- Group and order by item name or ID, and sum quantity or revenue accordingly
+- Group by item.item_id or item.item_name
+- Order by SUM(item.quantity) or SUM(item.price * item.quantity)
 
 ---
 
@@ -125,8 +125,7 @@ You MUST:
 
 💡 You must interpret match_logic as a valid SQL WHEN condition.
 ⛔ Do NOT use REGEXP_CONTAINS() or join conditions.
-
-✅ Instead, use something like:
+✅ Instead, use:
 CASE
   WHEN [match_logic for Paid Search] THEN "Paid Search"
   WHEN [match_logic for Organic Search] THEN "Organic Search"
