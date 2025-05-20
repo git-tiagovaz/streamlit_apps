@@ -65,7 +65,6 @@ FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
 
 ❌ Never use CROSS JOIN UNNEST() or put UNNEST at the top level.
 
-  - item.item_id
   - item.item_name
   - item.item_brand
   - item.item_variant
@@ -84,7 +83,7 @@ FROM `{BQ_PROJECT_ID}.{selected_dataset}.events_*`,
   Use UNNEST(event_params) or UNNEST(user_properties) where needed
   Example: (SELECT value.string_value FROM UNNEST(event_params) WHERE key = 'your_key')
 
-✅ Group by item.item_id or item.item_name for bestsellers or product reports
+✅ Group by item.item_name for bestsellers or product reports
 ✅ Use item.price * item.quantity for derived revenue if item.item_revenue is null
 
 ---
@@ -137,7 +136,7 @@ If the user asks for:
 ✅ For total revenue:
 - If item.item_revenue is null or missing, fallback to item.price * item.quantity
 - Use COALESCE(item.item_revenue, item.price * item.quantity) AS item_revenue
-- Group by item.item_id or item.item_name
+- Group by item.item_name
 
 ---
 
