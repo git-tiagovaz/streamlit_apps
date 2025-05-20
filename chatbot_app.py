@@ -282,14 +282,37 @@ if st.session_state.get("awaiting_confirmation", False):
                         "role": "assistant",
                         "content": f"Here is the result of your query:\n sql\n{st.session_state.generated_sql}\n\n{summary}"
                     })
+
                     # === CHART RECOMMENDATION AGENT ===
                     with st.spinner("🔍 Recommending chart type..."):
                         chart_agent = create_chart_agent()
                         df_sample = df.head(10).to_markdown(index=False)
-                        result = chart_agent.invoke({"input": df_sample})
-                        chart_type = result.get("output", "table").strip().lower()
 
-                        st.markdown(f"### 🧭 Recommended Chart Type: **{chart_type}**")
+                        try:
+                            result = chart_agent.invoke({"input": df_sample})
+
+                            # ✅ Safely extract chart recommendation
+                            chart_text = getattr(result, "content", None)
+                            if chart_text is None and isinstance(result, dict):
+                                chart_text = result.get("output", "")
+
+                            if chart_text:
+                                chart_type = chart_text.strip().lower()
+                                st.markdown(f"### 🧭 Recommended Chart Type: **{chart_type}**")
+
+                                # === Auto-Render Chart ===
+                                if chart_type == "line" or chart_type == "timeseries":
+                                    st.line_chart(df.set_index(df.columns[0]))
+                                elif chart_type == "bar":
+                                    st.bar_chart(df.set_index(df.columns[0]))
+                                else:
+                                    st.info("ℹ️ Displaying table as no valid chart type was recognized.")
+                                    st.dataframe(df)
+                            else:
+                                st.warning("🤖 Chart agent did not return a valid recommendation.")
+
+                        except Exception as chart_err:
+                            st.error(f"❌ Chart recommendation failed: {chart_err}")
 
                 except Exception as e:
                     st.error(f"❌ Error executing query: {e}")
