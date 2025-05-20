@@ -6,4 +6,4 @@ google-cloud-bigquery
 google-auth
 crewai==0.11.0
 db-dtypes
-
+tabulate
