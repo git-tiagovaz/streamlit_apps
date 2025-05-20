@@ -134,8 +134,10 @@ If the user asks for:
   - 'add_to_cart' → items added to cart
   - 'view_item' → items viewed
   - 'refund' → refunded items
+✅ For total revenue:
+- If item.item_revenue is null or missing, fallback to item.price * item.quantity
+- Use COALESCE(item.item_revenue, item.price * item.quantity) AS item_revenue
 - Group by item.item_id or item.item_name
-- Order by SUM(item.quantity) or SUM(item.price * item.quantity)
 
 ---
 
