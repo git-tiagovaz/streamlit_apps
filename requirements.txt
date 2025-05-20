@@ -1,6 +1,7 @@
 streamlit
 openai
 pandas
+langchain
 google-cloud-bigquery
 google-auth
 crewai==0.11.0

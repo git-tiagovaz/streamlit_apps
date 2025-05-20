@@ -8,6 +8,8 @@ from google.oauth2 import service_account
 import openai
 import warnings
 from app_credentials import VALID_USERS
+from agents.chart_recommender import create_chart_agent
+
 
 
 warnings.filterwarnings("ignore", message="BigQuery Storage module not found")
@@ -227,6 +229,8 @@ def run_query(sql):
     query_job = client.query(sql)
     return query_job.result().to_dataframe()
 
+
+
 # === Chat Input Handler ===
 user_prompt = st.chat_input("Ask a question about your ecommerce data...")
 
@@ -278,6 +282,14 @@ if st.session_state.get("awaiting_confirmation", False):
                         "role": "assistant",
                         "content": f"Here is the result of your query:\n sql\n{st.session_state.generated_sql}\n\n{summary}"
                     })
+                    # === CHART RECOMMENDATION AGENT ===
+                    with st.spinner("🔍 Recommending chart type..."):
+                        chart_agent = create_chart_agent()
+                        df_sample = df.head(10).to_markdown(index=False)
+                        result = chart_agent.invoke({"input": df_sample})
+                        chart_type = result.get("output", "table").strip().lower()
+
+                        st.markdown(f"### 🧭 Recommended Chart Type: **{chart_type}**")
 
                 except Exception as e:
                     st.error(f"❌ Error executing query: {e}")
