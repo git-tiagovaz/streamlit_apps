@@ -9,6 +9,8 @@ import openai
 import warnings
 from app_credentials import VALID_USERS
 from agents.chart_recommender import create_chart_agent
+from vertexai.language_models import ChatModel  # Make sure you import this at the top
+
 
 
 
@@ -127,6 +129,14 @@ schema_type = selected_config["schema"]
 st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
 st.sidebar.markdown("---")
 
+st.sidebar.markdown("## Assistant Mode")
+selected_mode = st.sidebar.radio(
+    "Choose your assistant:",
+    ("GA4 Data Assistant", "Gemini Analytics Assistant")
+)
+st.sidebar.markdown("---")
+
+
 # === Sidebar Disclaimer ===
 st.sidebar.markdown("---")
 st.sidebar.markdown("🔒 ** For internal analytics team use only - no PII data will be revelead or shared **", unsafe_allow_html=True)
@@ -174,6 +184,17 @@ You can write in bullet points or separated paragraphs for clear, practical insi
         temperature=0.5
     )
     return response.choices[0].message.content.strip()
+
+def ask_gemini(question):
+    model = ChatModel.from_pretrained("gemini-1.5-pro")  # Use 2.5 when available
+    chat = model.start_chat()
+    prompt = f"""
+You are a senior digital analytics consultant.
+Explain the following in simple and strategic language:
+
+{question}
+"""
+    return chat.send_message(prompt).text
 
 def load_prompt(template_path, **kwargs):
     with open(template_path, "r") as f:
@@ -232,12 +253,13 @@ def run_query(sql):
 
 
 # === Chat Input Handler ===
-user_prompt = st.chat_input("Ask a question about your ecommerce data...")
+if selected_mode == "GA4 Data Assistant":
+    user_prompt = st.chat_input("Ask a question about your ecommerce data...")
 
-if user_prompt:
-    st.session_state.has_started_chat = True
-    st.chat_message("user").markdown(user_prompt)
-    st.session_state.messages.append({"role": "user", "content": user_prompt})
+    if user_prompt:
+        st.session_state.has_started_chat = True
+        st.chat_message("user").markdown(user_prompt)
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking..."):
@@ -259,6 +281,16 @@ if user_prompt:
                     "role": "assistant",
                     "content": f"❌ Error preparing query: {e}"
                 })
+elif selected_mode == "Gemini Analytics Assistant":
+    gemini_q = st.text_input("Ask a strategic or conceptual question:")
+    if gemini_q:
+        with st.spinner("Thinking with Gemini..."):
+            try:
+                response = ask_gemini(gemini_q)
+                st.info(response)
+            except Exception as e:
+                st.error(f"Gemini Error: {e}")
+
 
 # === Query Confirmation Flow ===
 if st.session_state.get("awaiting_confirmation", False):
