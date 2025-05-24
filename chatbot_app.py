@@ -1,3 +1,4 @@
+from vertexai.language_models import ChatModel  # Make sure you import this at the top
 import os
 import re
 import streamlit as st
@@ -9,7 +10,6 @@ import openai
 import warnings
 from app_credentials import VALID_USERS
 from agents.chart_recommender import create_chart_agent
-from vertexai.language_models import ChatModel  # Make sure you import this at the top
 
 
 
