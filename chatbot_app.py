@@ -252,44 +252,44 @@ def run_query(sql):
 
 
 
-# === Chat Input Handler ===
+# === Assistant Mode Routing ===
 if selected_mode == "GA4 Data Assistant":
     user_prompt = st.chat_input("Ask a question about your ecommerce data...")
-
     if user_prompt:
         st.session_state.has_started_chat = True
         st.chat_message("user").markdown(user_prompt)
         st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            try:
-                raw_sql = generate_sql_prompt(
-                    st.session_state.messages, user_prompt, selected_dataset, schema_type
-                )
-                estimated_size = estimate_query_size(raw_sql)
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                try:
+                    raw_sql = generate_sql_prompt(
+                        st.session_state.messages, user_prompt, selected_dataset, schema_type
+                    )
+                    estimated_size = estimate_query_size(raw_sql)
 
-                # Store SQL and prompt in session state for confirmation
-                st.session_state.generated_sql = raw_sql
-                st.session_state.latest_user_prompt = user_prompt
-                st.session_state.estimated_size = estimated_size
-                st.session_state.awaiting_confirmation = True
+                    st.session_state.generated_sql = raw_sql
+                    st.session_state.latest_user_prompt = user_prompt
+                    st.session_state.estimated_size = estimated_size
+                    st.session_state.awaiting_confirmation = True
 
-            except Exception as e:
-                st.error(f"❌ Error preparing query: {e}")
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": f"❌ Error preparing query: {e}"
-                })
+                except Exception as e:
+                    st.error(f"❌ Error preparing query: {e}")
+                    st.session_state.messages.append({
+                        "role": "assistant",
+                        "content": f"❌ Error preparing query: {e}"
+                    })
+
 elif selected_mode == "Gemini Analytics Assistant":
-    gemini_q = st.text_input("Ask a strategic or conceptual question:")
+    st.markdown("### 🤖 Gemini Analytics Q&A Agent")
+    gemini_q = st.text_input("Ask a strategic or conceptual question (e.g., GA4 KPIs, funnel metrics):")
     if gemini_q:
         with st.spinner("Thinking with Gemini..."):
             try:
-                response = ask_gemini(gemini_q)
-                st.info(response)
+                answer = ask_gemini(gemini_q)
+                st.info(answer)
             except Exception as e:
-                st.error(f"Gemini Error: {e}")
+                st.error(f"Gemini error: {e}")
 
 
 # === Query Confirmation Flow ===
