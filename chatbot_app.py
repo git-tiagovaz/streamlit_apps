@@ -29,7 +29,7 @@ CHANNEL_RULES_TABLE = "algebraic-pier-330310.ga4_reference.custom_channel_groupi
 # === Initialize Vertex AI ===
 vertexai.init(
     project=st.secrets["gcp_service_account"]["project_id"],
-    location="europe-west1",  # Use your preferred region
+    location="us-central1",  # Use your preferred region
 )
 
 
