@@ -10,7 +10,6 @@ import openai
 import warnings
 from app_credentials import VALID_USERS
 from agents.chart_recommender import create_chart_agent
-import vertexai
 
 
 
@@ -25,13 +24,6 @@ BQ_PROJECT_ID = st.secrets["gcp_service_account"]["project_id"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 BQ_TABLE = "events_*"
 CHANNEL_RULES_TABLE = "algebraic-pier-330310.ga4_reference.custom_channel_grouping"
-
-# === Initialize Vertex AI ===
-vertexai.init(
-    project=st.secrets["gcp_service_account"]["project_id"],
-    location="us-central1",  # Use your preferred region
-    credentials=gcp_credentials  # ✅ Explicit credentials passed here
-)
 
 
 # === Validate required keys ===
