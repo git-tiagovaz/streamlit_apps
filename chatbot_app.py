@@ -30,6 +30,7 @@ CHANNEL_RULES_TABLE = "algebraic-pier-330310.ga4_reference.custom_channel_groupi
 vertexai.init(
     project=st.secrets["gcp_service_account"]["project_id"],
     location="us-central1",  # Use your preferred region
+    credentials=gcp_credentials  # ✅ Explicit credentials passed here
 )
 
 
