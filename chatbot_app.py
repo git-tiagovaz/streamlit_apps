@@ -1,4 +1,3 @@
-from vertexai.language_models import ChatModel  # Make sure you import this at the top
 import os
 import re
 import streamlit as st
@@ -13,7 +12,6 @@ from agents.chart_recommender import create_chart_agent
 
 
 
-
 warnings.filterwarnings("ignore", message="BigQuery Storage module not found")
 
 # === Load credentials from Streamlit secrets ===
@@ -24,7 +22,6 @@ BQ_PROJECT_ID = st.secrets["gcp_service_account"]["project_id"]
 OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
 BQ_TABLE = "events_*"
 CHANNEL_RULES_TABLE = "algebraic-pier-330310.ga4_reference.custom_channel_grouping"
-
 
 # === Validate required keys ===
 if not OPENAI_API_KEY:
@@ -130,14 +127,6 @@ schema_type = selected_config["schema"]
 st.sidebar.success(f"Using: {selected_dataset} ({schema_type.upper()})")
 st.sidebar.markdown("---")
 
-st.sidebar.markdown("## Assistant Mode")
-selected_mode = st.sidebar.radio(
-    "Choose your assistant:",
-    ("GA4 Data Assistant", "Gemini Analytics Assistant")
-)
-st.sidebar.markdown("---")
-
-
 # === Sidebar Disclaimer ===
 st.sidebar.markdown("---")
 st.sidebar.markdown("🔒 ** For internal analytics team use only - no PII data will be revelead or shared **", unsafe_allow_html=True)
@@ -185,17 +174,6 @@ You can write in bullet points or separated paragraphs for clear, practical insi
         temperature=0.5
     )
     return response.choices[0].message.content.strip()
-
-def ask_gemini(question):
-    model = ChatModel.from_pretrained("gemini-1.5-pro")  # Use 2.5 when available
-    chat = model.start_chat()
-    prompt = f"""
-You are a senior digital analytics consultant.
-Explain the following in simple and strategic language:
-
-{question}
-"""
-    return chat.send_message(prompt).text
 
 def load_prompt(template_path, **kwargs):
     with open(template_path, "r") as f:
@@ -253,45 +231,34 @@ def run_query(sql):
 
 
 
-# === Assistant Mode Routing ===
-if selected_mode == "GA4 Data Assistant":
-    user_prompt = st.chat_input("Ask a question about your ecommerce data...")
-    if user_prompt:
-        st.session_state.has_started_chat = True
-        st.chat_message("user").markdown(user_prompt)
-        st.session_state.messages.append({"role": "user", "content": user_prompt})
+# === Chat Input Handler ===
+user_prompt = st.chat_input("Ask a question about your ecommerce data...")
 
-        with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                try:
-                    raw_sql = generate_sql_prompt(
-                        st.session_state.messages, user_prompt, selected_dataset, schema_type
-                    )
-                    estimated_size = estimate_query_size(raw_sql)
+if user_prompt:
+    st.session_state.has_started_chat = True
+    st.chat_message("user").markdown(user_prompt)
+    st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-                    st.session_state.generated_sql = raw_sql
-                    st.session_state.latest_user_prompt = user_prompt
-                    st.session_state.estimated_size = estimated_size
-                    st.session_state.awaiting_confirmation = True
-
-                except Exception as e:
-                    st.error(f"❌ Error preparing query: {e}")
-                    st.session_state.messages.append({
-                        "role": "assistant",
-                        "content": f"❌ Error preparing query: {e}"
-                    })
-
-elif selected_mode == "Gemini Analytics Assistant":
-    st.markdown("### 🤖 Gemini Analytics Q&A Agent")
-    gemini_q = st.text_input("Ask a strategic or conceptual question (e.g., GA4 KPIs, funnel metrics):")
-    if gemini_q:
-        with st.spinner("Thinking with Gemini..."):
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
             try:
-                answer = ask_gemini(gemini_q)
-                st.info(answer)
-            except Exception as e:
-                st.error(f"Gemini error: {e}")
+                raw_sql = generate_sql_prompt(
+                    st.session_state.messages, user_prompt, selected_dataset, schema_type
+                )
+                estimated_size = estimate_query_size(raw_sql)
 
+                # Store SQL and prompt in session state for confirmation
+                st.session_state.generated_sql = raw_sql
+                st.session_state.latest_user_prompt = user_prompt
+                st.session_state.estimated_size = estimated_size
+                st.session_state.awaiting_confirmation = True
+
+            except Exception as e:
+                st.error(f"❌ Error preparing query: {e}")
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": f"❌ Error preparing query: {e}"
+                })
 
 # === Query Confirmation Flow ===
 if st.session_state.get("awaiting_confirmation", False):
